@@ -1,9 +1,6 @@
 /target
 Cargo.lock
 
-# Editor / OS files
 .DS_Store
-.idea/
-.vscode/
 *.swp
 *.swo
