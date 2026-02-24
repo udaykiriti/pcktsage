@@ -40,6 +40,8 @@ pub struct TcpFlags {
     pub ack: bool,
     pub fin: bool,
     pub rst: bool,
+    pub psh: bool,
+    pub urg: bool,
 }
 
 impl fmt::Display for TcpFlags {
@@ -56,6 +58,12 @@ impl fmt::Display for TcpFlags {
         }
         if self.rst {
             parts.push("RST");
+        }
+        if self.psh {
+            parts.push("PSH");
+        }
+        if self.urg {
+            parts.push("URG");
         }
         if parts.is_empty() {
             parts.push("-");
@@ -108,6 +116,8 @@ pub fn parse_packet(frame: &[u8]) -> Option<ParsedPacket> {
                         ack: flags & 0x10 != 0,
                         fin: flags & 0x01 != 0,
                         rst: flags & 0x04 != 0,
+                        psh: flags & 0x08 != 0,
+                        urg: flags & 0x20 != 0,
                     });
                 }
                 IpNextHeaderProtocols::Udp => {

@@ -38,6 +38,18 @@ impl IntrusionDetector {
             }
         }
 
+        if !flags.syn && !flags.ack && !flags.fin && !flags.rst && !flags.psh && !flags.urg {
+            return Some(format!("NULL scan detected from {src}"));
+        }
+
+        if flags.fin && !flags.syn && !flags.ack && !flags.rst && !flags.psh && !flags.urg {
+            return Some(format!("FIN scan detected from {src}"));
+        }
+
+        if flags.fin && flags.psh && flags.urg {
+            return Some(format!("XMAS scan detected from {src}"));
+        }
+
         if (dst_port == 23 || dst_port == 2323) && self.telnet_seen.insert((src, dst_port)) {
             return Some(format!(
                 "telnet traffic observed from {src} to port {dst_port}"
@@ -71,6 +83,8 @@ mod tests {
                 ack: false,
                 fin: false,
                 rst: false,
+                psh: false,
+                urg: false,
             }),
             sequence: Some(10),
             udp_length: None,
@@ -101,6 +115,8 @@ mod tests {
                 ack: true,
                 fin: false,
                 rst: false,
+                psh: false,
+                urg: false,
             }),
             sequence: Some(42),
             udp_length: None,
@@ -110,5 +126,69 @@ mod tests {
 
         assert!(ids.inspect(&packet).is_some());
         assert!(ids.inspect(&packet).is_none());
+    }
+
+    #[test]
+    fn detects_scans() {
+        let mut ids = IntrusionDetector::new(20);
+        let base_packet = ParsedPacket {
+            src_mac: "a".into(),
+            dst_mac: "b".into(),
+            ethertype: "Ipv4".into(),
+            src_ip: Some(Ipv4Addr::new(10, 1, 1, 7)),
+            dst_ip: Some(Ipv4Addr::new(10, 1, 1, 10)),
+            ttl: Some(64),
+            protocol: L4Protocol::Tcp,
+            src_port: Some(40000),
+            dst_port: Some(80),
+            tcp_flags: Some(TcpFlags {
+                syn: false,
+                ack: false,
+                fin: false,
+                rst: false,
+                psh: false,
+                urg: false,
+            }),
+            sequence: Some(42),
+            udp_length: None,
+            label: "TCP",
+            note: None,
+        };
+
+        // NULL scan
+        let mut null_scan_packet = base_packet.clone();
+        null_scan_packet.tcp_flags = Some(TcpFlags {
+            syn: false,
+            ack: false,
+            fin: false,
+            rst: false,
+            psh: false,
+            urg: false,
+        });
+        assert!(ids.inspect(&null_scan_packet).unwrap().contains("NULL scan"));
+
+        // FIN scan
+        let mut fin_scan_packet = base_packet.clone();
+        fin_scan_packet.tcp_flags = Some(TcpFlags {
+            syn: false,
+            ack: false,
+            fin: true,
+            rst: false,
+            psh: false,
+            urg: false,
+        });
+        assert!(ids.inspect(&fin_scan_packet).unwrap().contains("FIN scan"));
+
+        // XMAS scan
+        let mut xmas_scan_packet = base_packet.clone();
+        xmas_scan_packet.tcp_flags = Some(TcpFlags {
+            syn: false,
+            ack: false,
+            fin: true,
+            rst: false,
+            psh: true,
+            urg: true,
+        });
+        assert!(ids.inspect(&xmas_scan_packet).unwrap().contains("XMAS scan"));
     }
 }

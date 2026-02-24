@@ -127,6 +127,8 @@ mod tests {
                 ack: false,
                 fin: false,
                 rst: false,
+                psh: false,
+                urg: false,
             }),
             sequence: Some(1),
             udp_length: None,
