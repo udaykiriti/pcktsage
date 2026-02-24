@@ -409,8 +409,12 @@ impl DashboardModel {
         let elapsed = self.last_rate_sample.elapsed();
         if elapsed >= Duration::from_secs(1) {
             let delta = total_packets.saturating_sub(self.last_total_packets);
-            let secs = elapsed.as_secs().max(1);
-            self.current_pps = delta / secs;
+            let secs = elapsed.as_secs_f64();
+            self.current_pps = if secs > 0.0 {
+                (delta as f64 / secs).round() as u64
+            } else {
+                0
+            };
             self.last_total_packets = total_packets;
             self.last_rate_sample = Instant::now();
             self.rate_history.push_back(self.current_pps);
@@ -468,15 +472,15 @@ mod tests {
     #[test]
     fn rate_updates_and_history_is_bounded() {
         let mut model = DashboardModel::new();
-        model.last_rate_sample = Instant::now() - Duration::from_secs(2);
-        model.update_rate(20);
+        model.last_rate_sample = Instant::now() - Duration::from_secs_f64(1.5);
+        model.update_rate(15);
         assert_eq!(model.current_pps, 10);
-        assert_eq!(model.last_total_packets, 20);
+        assert_eq!(model.last_total_packets, 15);
         assert_eq!(model.rate_history.back().copied(), Some(10));
 
         for i in 1..200 {
             model.last_rate_sample = Instant::now() - Duration::from_secs(1);
-            model.update_rate(20 + i);
+            model.update_rate(15 + i);
         }
         assert_eq!(model.rate_history.len(), DashboardModel::MAX_RATE_POINTS);
     }
