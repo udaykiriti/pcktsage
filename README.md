@@ -20,6 +20,7 @@ It captures live traffic from network interfaces, parses protocol layers, applie
 - Detects suspicious patterns:
   - SYN burst threshold alerts
   - Telnet traffic alerts (deduplicated per source/port)
+  - NULL, FIN, and XMAS scan detection
 - Provides:
   - Interactive dashboard (`--dashboard`)
   - Newline-delimited JSON output (`--json`)
@@ -206,3 +207,7 @@ For optimized builds:
 cargo build --release
 sudo ./target/release/packetsage
 ```
+
+## License
+
+This project is licensed under the Apache License, Version 2.0. See the [LICENSE](LICENSE) file for details.
